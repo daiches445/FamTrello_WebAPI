@@ -1,0 +1,8 @@
+on Family controller:
+	delete family:
+		remove also from FamMembers.
+		remove also from familyNotes.
+
+on Users controller:
+	on delete user:
+		delete from user notes or remove forigen key.

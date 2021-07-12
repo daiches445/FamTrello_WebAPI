@@ -38,6 +38,27 @@ namespace FamTrello_WebAPI.Controllers
             
         }
 
+        [HttpGet]
+        [Route("api/Users/families/{username}")]
+        public IHttpActionResult GetFamilies(string username)
+        {
+            List<Family> fam_lst = manager.GetFamilies(username).ToList();
+
+            try
+            {
+                if (fam_lst.Count > 0)
+                {
+                    return Ok(fam_lst);
+                }
+                else
+                    return Content(HttpStatusCode.NotFound, "Not Found.");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
         [HttpPost]
 
         public IHttpActionResult Post([FromBody] User user2add)

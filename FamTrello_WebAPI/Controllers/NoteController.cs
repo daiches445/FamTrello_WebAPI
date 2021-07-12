@@ -23,7 +23,8 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/{note_ID}")]
         public IHttpActionResult Get([FromUri]int note_ID)
         {
-            Note n = manager.GetNote(note_ID);
+            string cmd_txt = @"SELECT * FROM Note WHERE id = @note_ID";
+            Note n = manager.ExecQGetNotes(cmd_txt,note_ID,"mock","mock").First();
 
             try
             {
@@ -43,7 +44,10 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/user/{username}")]
         public IHttpActionResult GetUserNotes([FromUri] string username)
         {
-            List<Note> note_lst = manager.GetUserNotes(username).ToList();
+            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.fam_ID,FamilyNotes.creator FROM FamilyNotes
+	                            inner join Note on FamilyNotes.note_id = Note.id
+	                            WHERE creator = @username";
+            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt,0,"mock",username).ToList();
 
             try
             {
@@ -66,7 +70,10 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/family/{fam_ID}")]
         public IHttpActionResult GetFamilyNotes([FromUri] string fam_ID)
         {
-            List<Note> note_lst = manager.GetFamilyNotes(fam_ID).ToList();
+            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID FROM FamilyNotes
+	                            inner join Note on FamilyNotes.note_id = Note.id
+	                            WHERE fam_ID = @fam_ID";
+            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt,0,fam_ID,"mock").ToList();
 
             try
             {
@@ -88,7 +95,11 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/fam_member/{fam_ID}/{username}")]
         public IHttpActionResult GetFamMemberNotes([FromUri] string fam_ID, [FromUri]string username)
         {
-            List<Note> note_lst = manager.GetFamilyMemberNotes(fam_ID, username).ToList();
+            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID FROM FamilyNotes
+	                            inner join Note on FamilyNotes.note_id = Note.id
+	                            WHERE fam_ID = @fam_ID AND creator = @username";
+
+            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt,0,fam_ID, username).ToList();
 
             try
             {
@@ -126,6 +137,51 @@ namespace FamTrello_WebAPI.Controllers
                 }
                 else
                     return BadRequest("unable to add note");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
+        [HttpPut]
+        public IHttpActionResult Put([FromBody] Note note2update)
+        {
+            Note n = manager.UpdateNote(note2update);
+
+            try
+            {
+                if (n != null)
+                {
+                    return Ok(n);
+                }
+                else
+                {
+                    return BadRequest("Unable to update");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
+        [HttpDelete]
+        [Route("api/Note/{note_ID}")]
+        public IHttpActionResult Delete([FromUri] int note_ID)
+        {
+            int res = manager.DeleteNote(note_ID);
+
+            try
+            {
+                if (res > 0)
+                {
+                    return Ok("Note No."+note_ID+" Deleted. Rows affected-"+ res);
+                }
+                else
+                {
+                    return BadRequest("Unable To Delete.");
+                }
             }
             catch (Exception ex)
             {

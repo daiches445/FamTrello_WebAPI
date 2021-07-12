@@ -10,7 +10,7 @@ namespace FamTrello_WebAPI.Controllers
 {
     public class UsersController : ApiController
     {
-        DBManager manager = new DBManager();
+        readonly DBManager manager = new DBManager();
         
 
 

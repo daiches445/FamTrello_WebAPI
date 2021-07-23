@@ -17,10 +17,10 @@ namespace FamTrello_WebAPI.Controllers
 
         public IHttpActionResult Get([FromUri]string fam_ID)
         {
-            Family f = manager.GetFamily(fam_ID);
 
             try
             {
+                Family f = manager.GetFamily(fam_ID);
                 if (f != null)
                 {
                     return Ok(f);
@@ -39,10 +39,10 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Family/members/{fam_ID}")]
         public IHttpActionResult GetMembers([FromUri]string fam_ID)
         {
-            List<User> mem_lst = manager.GetFamilyMembers(fam_ID).ToList();
-
+            
             try
             {
+                List<User> mem_lst = manager.GetFamilyMembers(fam_ID).ToList();
                 if (mem_lst.Count > 0)
                 {
                     return Ok(mem_lst);
@@ -101,13 +101,33 @@ namespace FamTrello_WebAPI.Controllers
             }
         }
 
+        [HttpPut]
+        [Route("api/Family/setAdmin/{isAdmin}")]
+        public IHttpActionResult SetAdmin([FromBody]User u,[FromUri] bool isAdmin)
+        {
+            
+            try
+            {
+                bool res = manager.SetAdmin(u, isAdmin);
+
+                if (res)
+                    return Ok($"{u.username} is now {(isAdmin ? "Admin" : "Not an Admin")}");
+                else
+                    return Content(HttpStatusCode.NotFound, "unable to find family member");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
         [HttpDelete]
         public IHttpActionResult DeleteFamMember([FromBody]User user2delete)
         {
-            int res = manager.RemoveFamilyMember(user2delete.fam_ID, user2delete);
 
             try
             {
+                int res = manager.RemoveFamilyMember(user2delete.fam_ID, user2delete);
                 if (res > 0)
                 {
                     return Content(HttpStatusCode.OK, user2delete.first_name + " has removed.");
@@ -128,10 +148,11 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Family/{fam_ID}")]
         public IHttpActionResult DeleteFamily([FromUri]string fam_ID)
         {
-            int res = manager.DeleteFamily(fam_ID);
 
             try
             {
+
+                int res = manager.DeleteFamily(fam_ID);
                 if (res > 0)
                 {
                     return Content(HttpStatusCode.OK, fam_ID + " was removed.");

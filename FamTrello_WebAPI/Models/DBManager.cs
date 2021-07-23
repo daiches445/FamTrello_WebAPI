@@ -95,30 +95,11 @@ namespace FamTrello_WebAPI.Controllers
                 " WHERE username = @username;";
             return ExecQ(user2update, cmd);
 
-            //User u = GetUser(vals2update.username);
-            //if (u == null)
-            //    return null;
-
-
-            //string cmd_txt = 
-
-            //SqlCommand cmd = new SqlCommand(cmd_txt, con);
-            //cmd.Parameters.AddWithValue(" @first_name", vals2update.first_name);
-            //cmd.Parameters.AddWithValue(" @password", vals2update.password);
-            //cmd.Parameters.AddWithValue(" @email", vals2update.email);
-            //cmd.Parameters.AddWithValue(" @age", vals2update.age);
-            //cmd.Parameters.AddWithValue(" @username", vals2update.username);
-
-            //cmd.Connection.Open();
-
         }
 
         public User ExecQ(User user, string cmd_txt)
         {
-            if (this.GetUser(user.username) == null)
-                return null;
 
-            //string cmd_txt = $"insert into Users values(@username,@fname,@password,@email,@age)";
             SqlCommand cmd = new SqlCommand(cmd_txt);
             cmd.Connection = con;
 
@@ -140,8 +121,8 @@ namespace FamTrello_WebAPI.Controllers
 
         public int DeleteUser(string fam_ID, User user2delete)
         {
-            if (RemoveFamilyMember(fam_ID, user2delete) == 0)
-                return 0;
+            RemoveFamilyMember(fam_ID, user2delete);
+                
 
             string cmd_txt = "DELETE FROM Users" +
                 " WHERE username = @username";
@@ -165,6 +146,28 @@ namespace FamTrello_WebAPI.Controllers
         #endregion
 
         #region ++FAMILY METHODS++
+
+        internal bool SetAdmin(User u, bool isAdmin)
+        {
+            string cmd_txt = @"UPDATE FamilyMembers 
+                               SET isAdmin = @isAdmin
+                               WHERE username = @username AND fam_ID = @fam_ID";
+
+            SqlCommand cmd = new SqlCommand(cmd_txt);
+            cmd.Parameters.AddWithValue("@fam_ID", u.fam_ID);
+            cmd.Parameters.AddWithValue("@username", u.username);
+            cmd.Parameters.AddWithValue("@isAdmin", isAdmin);
+
+            cmd.Connection = con;
+            cmd.Connection.Open();
+            int res = cmd.ExecuteNonQuery();
+            cmd.Connection.Close();
+
+            return res == 1;
+
+
+        }
+
 
 
         public Family GetFamily(string fam_ID)
@@ -229,11 +232,6 @@ namespace FamTrello_WebAPI.Controllers
 
         public Family AddFamily(Family family2add)
         {
-            if (GetFamily(family2add.fam_ID) != null)
-            {
-                return null;
-            }
-
 
             string cmd_txt = $"insert into Families values(@fam_ID,@name)";
             SqlCommand cmd = new SqlCommand(cmd_txt);
@@ -253,11 +251,8 @@ namespace FamTrello_WebAPI.Controllers
         }
         public User AddFamMember(User user2add)
         {
-            string cmd_txt = $"insert into FamilyMembers values(@fam_ID,@username,@role)";
+            string cmd_txt = $"insert into FamilyMembers values(@fam_ID,@username,@role,@isAdmin)";
 
-            User s = GetFamilyMembers(user2add.fam_ID).SingleOrDefault<User>((usr) => usr.username == user2add.username);
-            if (s != null)
-                return null;
 
 
             SqlCommand cmd = new SqlCommand(cmd_txt);
@@ -266,6 +261,7 @@ namespace FamTrello_WebAPI.Controllers
             cmd.Parameters.AddWithValue("@fam_ID", user2add.fam_ID);
             cmd.Parameters.AddWithValue("@username", user2add.username);
             cmd.Parameters.AddWithValue("@role", user2add.role);
+            cmd.Parameters.AddWithValue("@isAdmin", user2add.isAdmin);
 
             cmd.Connection.Open();
 
@@ -425,6 +421,40 @@ namespace FamTrello_WebAPI.Controllers
             cmd.Connection.Close();
             return res;
         }
+
+        internal int TagUsers(TaggedUsers[] taggedUsers)
+        {
+
+            DataTable t_users = new DataTable("@t_users");
+            t_users.Columns.Add("note_ID", typeof(int));
+            t_users.Columns.Add("username", typeof(string));
+
+            foreach (TaggedUsers tu in taggedUsers)
+            {
+                DataRow row;
+                row = t_users.NewRow();
+                row["note_ID"] = tu.note_ID;
+                row["username"] = tu.username;
+
+                t_users.Rows.Add(row);
+            }
+
+            SqlCommand cmd = new SqlCommand('AddTaggedUsers');
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Connection = con;
+            cmd.Parameters.AddWithValue("@t_users", t_users);
+            cmd.Parameters.AddWithValue("ID", taggedUsers[0].note_ID);
+            cmd.Connection.Open();
+
+            int res = cmd.ExecuteNonQuery();
+
+            cmd.Connection.Close();
+
+            return res;
+
+        }
+
+
         #endregion
 
 

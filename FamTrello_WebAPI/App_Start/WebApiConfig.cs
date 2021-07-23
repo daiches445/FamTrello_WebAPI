@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Http;
+using System.Web.Http.Cors;
 
 namespace FamTrello_WebAPI
 {
@@ -10,6 +11,8 @@ namespace FamTrello_WebAPI
         public static void Register(HttpConfiguration config)
         {
             // Web API configuration and services
+            EnableCorsAttribute enableCors = new EnableCorsAttribute("*", "*", "*");
+            config.EnableCors(enableCors);
 
             // Web API routes
             config.MapHttpAttributeRoutes();

@@ -144,6 +144,28 @@ namespace FamTrello_WebAPI.Controllers
             }
         }
 
+        [HttpPost]
+        [Route("api/Note/tagUsers")]
+        public IHttpActionResult TagUsers([FromBody] TaggedUsers[] taggedUsers)
+        {
+            try
+            {
+                int res = manager.TagUsers(taggedUsers);
+                if (res > 0)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest("something went wrong");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
         [HttpPut]
         public IHttpActionResult Put([FromBody] Note note2update)
         {

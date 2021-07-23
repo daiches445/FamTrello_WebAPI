@@ -8,14 +8,14 @@ using FamTrello_WebAPI.Models;
 
 namespace FamTrello_WebAPI.Controllers
 {
-    public class UsersController : ApiController
+    public class UserController : ApiController
     {
         readonly DBManager manager = new DBManager();
         
 
 
         [HttpGet]
-        [Route("api/Users/{username}")]
+        [Route("api/User/{username}")]
         
         public IHttpActionResult Get([FromUri]string username)
         {
@@ -39,7 +39,7 @@ namespace FamTrello_WebAPI.Controllers
         }
 
         [HttpGet]
-        [Route("api/Users/families/{username}")]
+        [Route("api/User/families/{username}")]
         public IHttpActionResult GetFamilies(string username)
         {
             List<Family> fam_lst = manager.GetFamilies(username).ToList();
@@ -71,7 +71,7 @@ namespace FamTrello_WebAPI.Controllers
                     return Created(new Uri(Request.RequestUri.AbsoluteUri + u.username), u);
                 }
                 else
-                    throw new Exception("Unavilable username");
+                    return BadRequest();
             }
             catch (Exception ex)
             {

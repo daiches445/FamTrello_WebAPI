@@ -20,10 +20,11 @@ namespace FamTrello_WebAPI.Controllers
         public IHttpActionResult Get([FromUri]string username)
         {
             
-            User u = manager.GetUser(username);
 
             try
-            {
+            {          
+                User u = manager.GetUser(username);
+
                 if (u != null)
                 {
                     return Ok(u);
@@ -37,15 +38,40 @@ namespace FamTrello_WebAPI.Controllers
             }
             
         }
+        [HttpGet]
+        [Route("api/User/sign_in")]
+
+        public IHttpActionResult Signin([FromBody]User user2sign)
+        {
+           
+            try
+            {
+                User u = manager.SignIn(user2sign);
+                if (u != null)
+                {
+                    if (u.username == user2sign.username)
+                        return Ok(u);
+                    else
+                        return Content(HttpStatusCode.NoContent, "Wrong password");
+                }
+                else
+                    return Content(HttpStatusCode.NotFound, "");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+
+        }
 
         [HttpGet]
         [Route("api/User/families/{username}")]
         public IHttpActionResult GetFamilies(string username)
         {
-            List<Family> fam_lst = manager.GetFamilies(username).ToList();
 
             try
             {
+                List<Family> fam_lst = manager.GetFamilies(username).ToList();
                 if (fam_lst.Count > 0)
                 {
                     return Ok(fam_lst);
@@ -58,6 +84,23 @@ namespace FamTrello_WebAPI.Controllers
                 return Content(HttpStatusCode.BadRequest, ex);
             }
         }
+
+        [HttpGet]
+        [Route("api/User/close_con")]
+        public IHttpActionResult CloseCon()
+        {
+            try
+            {
+                manager.CloseCon();
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+
+                return BadRequest();
+            }
+        }
+
 
         [HttpPost]
 
@@ -98,20 +141,21 @@ namespace FamTrello_WebAPI.Controllers
             }
         }
         [HttpDelete]
-        public IHttpActionResult Delete([FromBody]User user2delete,[FromUri]string fam_ID)
+        [Route("api/User/{user2delete}")]
+        public IHttpActionResult Delete([FromUri]string user2delete)
         {
             
-            int res = manager.DeleteUser(fam_ID, user2delete);
 
             try
             {
-                if(res > 0)
+                int res = manager.DeleteUser(user2delete);
+                if (res > 0)
                 {
-                    return Content(HttpStatusCode.OK,"BYE " + user2delete.first_name + " I'll be Missing you!");
+                    return Content(HttpStatusCode.OK,"BYE " + user2delete + " I'll be Missing you!");
                 }
                 else
                 {
-                    return BadRequest("Unable to delete " + user2delete.username);
+                    return BadRequest("Unable to delete " + user2delete);
                 }
 
             }

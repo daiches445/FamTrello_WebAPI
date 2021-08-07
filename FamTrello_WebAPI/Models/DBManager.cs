@@ -7,13 +7,18 @@ using System.Linq;
 using System.Web;
 using FamTrello_WebAPI.Models;
 
+
+
 namespace FamTrello_WebAPI.Controllers
 {
     public class DBManager
     {
         private static readonly Lazy<DBManager> _instance = new Lazy<DBManager>(() => instance());
 
-        private string conStr = ConfigurationManager.ConnectionStrings["LIVEDNSfromLocal"].ConnectionString;  //@"Data Source=LAPTOP-RO7AUIMF\SQLEXPRESS;Initial Catalog=FamTrello;Integrated Security=True";
+        //LIVEDNSfromLocal
+        //LIVEDNSfromLivedns
+
+        private string conStr = ConfigurationManager.ConnectionStrings["LIVEDNSfromLivedns"].ConnectionString;  //@"Data Source=LAPTOP-RO7AUIMF\SQLEXPRESS;Initial Catalog=FamTrello;Integrated Security=True";
 
 
         private static SqlConnection con;
@@ -59,6 +64,8 @@ namespace FamTrello_WebAPI.Controllers
 
         }
 
+
+
         internal IEnumerable<Family> GetFamilies(string username)
         {
             string cmd_txt = @"SELECT fam_ID from FamilyMembers 
@@ -96,6 +103,17 @@ namespace FamTrello_WebAPI.Controllers
             return ExecQ(user2update, cmd);
 
         }
+        internal User SignIn(User user2sign)
+        {
+            User u = GetUser(user2sign.username);
+
+            if (u == null)
+                return null;
+            if (user2sign.password == u.password)
+                return u;
+            else
+                return new User();
+        }
 
         public User ExecQ(User user, string cmd_txt)
         {
@@ -119,23 +137,22 @@ namespace FamTrello_WebAPI.Controllers
 
 
 
-        public int DeleteUser(string fam_ID, User user2delete)
+        public int DeleteUser(string user2delete)
         {
-            RemoveFamilyMember(fam_ID, user2delete);
-                
+            //RemoveFamilyMember(fam_ID, user2delete);
 
             string cmd_txt = "DELETE FROM Users" +
                 " WHERE username = @username";
 
-            return ExecDelete(cmd_txt, fam_ID, user2delete);
+            return ExecDelete(cmd_txt, "f", user2delete);
 
         }
 
 
-        public int ExecDelete(string cmd_txt, string fam_ID, User user)
+        public int ExecDelete(string cmd_txt, string fam_ID, string username)
         {
             SqlCommand cmd = new SqlCommand(cmd_txt, con);
-            cmd.Parameters.AddWithValue("@username", user.username);
+            cmd.Parameters.AddWithValue("@username", username);
             cmd.Parameters.AddWithValue("@fam_ID", fam_ID);
             cmd.Connection.Open();
 
@@ -143,6 +160,8 @@ namespace FamTrello_WebAPI.Controllers
             cmd.Connection.Close();
             return res;
         }
+
+
         #endregion
 
         #region ++FAMILY METHODS++
@@ -161,14 +180,136 @@ namespace FamTrello_WebAPI.Controllers
             cmd.Connection = con;
             cmd.Connection.Open();
             int res = cmd.ExecuteNonQuery();
+
             cmd.Connection.Close();
 
             return res == 1;
 
 
         }
+        internal bool SetToken(User user, string token)
+        {
+            string cmd_txt = @"UPDATE FamilyMembers 
+                               SET push_token = @push_token
+                               WHERE username = @username AND fam_ID = @fam_ID";
+
+            SqlCommand cmd = new SqlCommand(cmd_txt);
+            cmd.Parameters.AddWithValue("@fam_ID", user.fam_ID);
+            cmd.Parameters.AddWithValue("@username", user.username);
+            cmd.Parameters.AddWithValue("@push_token", token);
+
+            cmd.Connection = con;
+            cmd.Connection.Open();
+            int res = cmd.ExecuteNonQuery();
+
+            cmd.Connection.Close();
+
+            return res == 1;
+        }
 
 
+        internal bool ApproveMember(User user2approve)
+        {
+            string cmd_text = @"UPDATE FamilyMembers
+                                SET isApproved = 1
+                                WHERE fam_ID = @fam_ID and username = @username";
+            SqlCommand com = new SqlCommand(cmd_text, con);
+            com.Parameters.AddWithValue("@fam_ID", user2approve.fam_ID);
+            com.Parameters.AddWithValue("@username", user2approve.username);
+            com.Connection.Open();
+
+            int res = com.ExecuteNonQuery();
+
+            com.Connection.Close();
+
+            return res == 1;
+        }
+        internal string GetToken(string username)
+        {
+            string cmd_txt = "@SELECT push_token FROM FamilyMembers" +
+                "               WHERE username = @username";
+            SqlCommand cmd = new SqlCommand(cmd_txt, con);
+            cmd.Parameters.AddWithValue("@username", username);
+            cmd.Connection.Open();
+
+            SqlDataReader reader = cmd.ExecuteReader();
+            string token ="";
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    token = reader.GetValue(0).ToString();
+                }
+            }
+            cmd.Connection.Close();
+
+
+            return token;
+        }
+        internal List<string> GetAdminsTokens(string fam_ID)
+        {
+            string cmd_txt = "GetAdminsTokens";
+
+
+            SqlCommand cmd = new SqlCommand(cmd_txt);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@fam_ID", fam_ID);
+            cmd.Connection = con;
+            //SqlDataAdapter adptr = new SqlDataAdapter(cmd);
+
+            //DataSet ds = new DataSet();
+            //adptr.Fill(ds);
+            cmd.Connection.Open();
+            SqlDataReader reader = cmd.ExecuteReader();
+            
+
+            List<string> tokens = new List<string>();
+
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    tokens.Add(reader.GetValue(0).ToString());
+                }
+            }
+
+            cmd.Connection.Close();
+
+
+            return tokens;
+        }
+
+        internal List<string> GetUnapproved(string fam_ID)
+        {
+            string cmd_txt = "GetUnApprovedMembers";
+
+
+            SqlCommand cmd = new SqlCommand(cmd_txt);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@fam_ID", fam_ID);
+            cmd.Connection = con;
+            //SqlDataAdapter adptr = new SqlDataAdapter(cmd);
+
+            //DataSet ds = new DataSet();
+            //adptr.Fill(ds);
+            cmd.Connection.Open();
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            List<string> members = new List<string>();
+
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    members.Add(reader.GetValue(0).ToString());
+                }
+            }
+            cmd.Connection.Close();
+
+
+            return members;
+        }
 
         public Family GetFamily(string fam_ID)
         {
@@ -181,7 +322,10 @@ namespace FamTrello_WebAPI.Controllers
             SqlDataAdapter adptr = new SqlDataAdapter(cmd);
 
             DataSet ds = new DataSet();
+            cmd.Connection.Open();
+
             adptr.Fill(ds);
+            
 
 
             List<Family> fam_lst = ds.Tables[0].AsEnumerable()
@@ -191,6 +335,8 @@ namespace FamTrello_WebAPI.Controllers
                     name = fam.Field<string>("name")
 
                 }).ToList();
+
+            cmd.Connection.Close();
 
             if (fam_lst.Count > 0)
                 fam_lst[0].members = GetFamilyMembers(fam_ID).ToList();
@@ -202,6 +348,40 @@ namespace FamTrello_WebAPI.Controllers
 
 
 
+        public IEnumerable<User> GetMember(string fam_ID,string username)
+        {
+            string cmd_txt = "P_GET_FAM_MEMBER";
+
+
+            SqlCommand cmd = new SqlCommand(cmd_txt);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@fam_ID", fam_ID);
+            cmd.Parameters.AddWithValue("@username", username);
+            cmd.Connection = con;
+            SqlDataAdapter adptr = new SqlDataAdapter(cmd);
+
+            DataSet ds = new DataSet();
+            cmd.Connection.Open();
+
+            adptr.Fill(ds);
+
+            List<User> famMem_lst = ds.Tables[0].AsEnumerable()
+                .Select(usr => new User()
+                {
+                    username = usr.Field<string>("username"),
+                    first_name = usr.Field<string>("first_name"),
+                    email = usr.Field<string>("email"),
+                    age = usr.Field<short>("age"),
+                    isAdmin = usr.Field<bool>("isAdmin"),
+                    isApproved = usr.Field<bool>("isApproved"),
+                    push_token = usr.Field<string>("push_token")
+
+                }).ToList();
+            cmd.Connection.Close();
+
+
+            return famMem_lst;
+        }
         public IEnumerable<User> GetFamilyMembers(string fam_ID)
         {
             string cmd_txt = "P_SHOW_FAM_MEMBERS";
@@ -224,8 +404,11 @@ namespace FamTrello_WebAPI.Controllers
                     first_name = usr.Field<string>("first_name"),
                     email = usr.Field<string>("email"),
                     age = usr.Field<short>("age"),
-
+                    isAdmin = usr.Field<bool>("isAdmin"),
+                    isApproved = usr.Field<bool>("isApproved")
                 }).ToList();
+            cmd.Connection.Close();
+
 
             return famMem_lst;
         }
@@ -244,6 +427,7 @@ namespace FamTrello_WebAPI.Controllers
             cmd.Connection.Open();
 
             int res = cmd.ExecuteNonQuery();
+
             cmd.Connection.Close();
 
             return res == 1 ? family2add : null;
@@ -251,9 +435,7 @@ namespace FamTrello_WebAPI.Controllers
         }
         public User AddFamMember(User user2add)
         {
-            string cmd_txt = $"insert into FamilyMembers values(@fam_ID,@username,@role,@isAdmin)";
-
-
+            string cmd_txt = $"insert into FamilyMembers values(@fam_ID,@username,@role,@isAdmin,@isApproved,@push_token)";
 
             SqlCommand cmd = new SqlCommand(cmd_txt);
             cmd.Connection = con;
@@ -262,17 +444,21 @@ namespace FamTrello_WebAPI.Controllers
             cmd.Parameters.AddWithValue("@username", user2add.username);
             cmd.Parameters.AddWithValue("@role", user2add.role);
             cmd.Parameters.AddWithValue("@isAdmin", user2add.isAdmin);
+            cmd.Parameters.AddWithValue("@isApproved", user2add.isApproved);
+            cmd.Parameters.AddWithValue("@push_token", user2add.push_token);
+
 
             cmd.Connection.Open();
 
             int res = cmd.ExecuteNonQuery();
+
             cmd.Connection.Close();
 
             return res == 1 ? user2add : null;
 
         }
 
-        public int RemoveFamilyMember(string fam_ID, User user2remove)
+        public int RemoveFamilyMember(string fam_ID, string user2remove)
         {
 
             string cmd_txt = "DELETE FROM FamilyMembers" +
@@ -287,16 +473,16 @@ namespace FamTrello_WebAPI.Controllers
             mock.username = "mock";
             string cmd_txt = "DELETE FROM FamilyMembers" +
             " WHERE fam_ID = @fam_ID";
-            ExecDelete(cmd_txt, fam_ID, mock);
+            ExecDelete(cmd_txt, fam_ID, "mock");
 
             cmd_txt = "DELETE FROM FamilyNotes" +
             " WHERE fam_ID = @fam_ID";
-            ExecDelete(cmd_txt, fam_ID, mock);
+            ExecDelete(cmd_txt, fam_ID, "mock");
 
             cmd_txt = "DELETE FROM Families" +
             " WHERE fam_ID = @fam_ID";
 
-            return ExecDelete(cmd_txt, fam_ID, mock);
+            return ExecDelete(cmd_txt, fam_ID, "mock");
         }
 
         #endregion
@@ -321,7 +507,7 @@ namespace FamTrello_WebAPI.Controllers
                     note_lst = ds.Tables[0].AsEnumerable()
                     .Select(note => new Note()
                     {
-                        id = note.Field<int>("id"),
+                        note_id = note.Field<int>("id"),
                         title = note.Field<string>("title"),
                         text = note.Field<string>("text"),
                         created = note.Field<DateTime>("created"),
@@ -332,17 +518,81 @@ namespace FamTrello_WebAPI.Controllers
                     note_lst = ds.Tables[0].AsEnumerable()
                     .Select(note => new Note()
                     {
-                        id = note.Field<int>("id"),
+                        note_id = note.Field<int>("id"),
                         title = note.Field<string>("title"),
                         text = note.Field<string>("text"),
                         created = note.Field<DateTime>("created"),
                         username = note.Field<string>("creator"),
-                        fam_ID = note.Field<string>("fam_ID")
-
+                        fam_ID = note.Field<string>("fam_ID"),
+                        status = note.Field<int>("note_status")
                     }).ToList();
             }
+            cmd.Connection.Close();
+
 
             return note_lst;
+        }
+        internal string GetNoteStatus(int note_ID)
+        {
+            string cmd_txt = "GetNoteStatus";
+            SqlCommand com = new SqlCommand(cmd_txt, con);
+            string status="";
+
+            com.CommandType = CommandType.StoredProcedure;
+            com.Parameters.AddWithValue("@note_id", note_ID);
+            com.Connection.Open();
+
+            SqlDataReader reader = com.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    status = reader.GetValue(0).ToString();
+                }
+            }
+            com.Connection.Close();
+
+            return status;
+        }
+        internal bool SetNoteStatus(int note_ID,int note_status)
+        {
+            string cmd_txt = @"update FamilyNotes 
+                                SET note_status = @note_status
+                                WHERE note_id = @note_id";
+            SqlCommand com = new SqlCommand(cmd_txt, con);
+            
+            com.Parameters.AddWithValue("@note_id", note_ID);
+            com.Parameters.AddWithValue("@note_status", note_status);
+            com.Connection.Open();
+
+            int res = com.ExecuteNonQuery();
+            com.Connection.Close();
+
+
+            return res == 1;
+        }
+        internal IEnumerable<string> GetTaggedUsers(int note_ID)
+        {
+            string cmd_txt = @"SELECT * FROM TaggedUsers 
+                               WHERE note_id = @note_id";
+
+            SqlCommand cmd = new SqlCommand(cmd_txt,con);
+            cmd.Parameters.AddWithValue("@note_id", note_ID);
+            List<string> t_users = new List<string>();
+
+            cmd.Connection.Open();
+            SqlDataReader reader = cmd.ExecuteReader();
+
+
+            while (reader.Read())
+                t_users.Add(reader.GetString(reader.GetOrdinal("username")));
+
+            cmd.Connection.Close();
+
+            return t_users;
+
+
+
         }
         public int PostNote(Note note2post)
         {
@@ -363,21 +613,23 @@ namespace FamTrello_WebAPI.Controllers
             return res;
 
         }
-        public int LinkNote(string fam_ID, string username, int note_ID)
+
+
+        public int LinkNote(Note note2link)
         {
             string cmd_txt = "INSERT INTO FamilyNotes VALUES(@fam_ID,@note_ID,@creator,1)";
 
             SqlCommand cmd = new SqlCommand(cmd_txt, con);
-
-            cmd.Parameters.AddWithValue("@fam_ID", fam_ID);
-            cmd.Parameters.AddWithValue("@note_ID", note_ID);
-            cmd.Parameters.AddWithValue("@creator", username);
+            string creator = note2link.username;
+            cmd.Parameters.AddWithValue("@fam_ID", note2link.fam_ID);
+            cmd.Parameters.AddWithValue("@note_ID", note2link.note_id);
+            cmd.Parameters.AddWithValue("@creator", creator);
 
             cmd.Connection.Open();
             int res = cmd.ExecuteNonQuery();
             cmd.Connection.Close();
 
-            return res > 0 ? note_ID : 0;
+            return res > 0 ? note2link.note_id : 0;
         }
 
         internal Note UpdateNote(Note note2update)
@@ -388,7 +640,7 @@ namespace FamTrello_WebAPI.Controllers
 
             SqlCommand cmd = new SqlCommand(cmd_txt,con);
 
-            cmd.Parameters.AddWithValue("@note_ID", note2update.id);
+            cmd.Parameters.AddWithValue("@note_ID", note2update.note_id);
             cmd.Parameters.AddWithValue("@title", note2update.title);
             cmd.Parameters.AddWithValue("@text", note2update.text);
             
@@ -439,7 +691,7 @@ namespace FamTrello_WebAPI.Controllers
                 t_users.Rows.Add(row);
             }
 
-            SqlCommand cmd = new SqlCommand('AddTaggedUsers');
+            SqlCommand cmd = new SqlCommand("AddTaggedUsers");
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.Connection = con;
             cmd.Parameters.AddWithValue("@t_users", t_users);
@@ -457,119 +709,12 @@ namespace FamTrello_WebAPI.Controllers
 
         #endregion
 
+        public void CloseCon()
+        {
+            con.Close();
+        }
+
 
     }
-    ///BACKUP////
-    ///
-
-    //public Note GetNote(int note_ID)
-    //{
-    //    string cmd_txt = @"SELECT * FROM Note WHERE id = @note_ID";
-
-    //    SqlCommand cmd = new SqlCommand(cmd_txt, con);
-    //    cmd.Parameters.AddWithValue("@note_ID", note_ID);
-
-    //    SqlDataAdapter adptr = new SqlDataAdapter(cmd);
-    //    DataSet ds = new DataSet();
-    //    adptr.Fill(ds);
-
-
-    //    List<Note> note_lst = ds.Tables[0].AsEnumerable()
-    //        .Select(note => new Note()
-    //        {
-    //            id = note.Field<int>("id"),
-    //            title = note.Field<string>("title"),
-    //            text = note.Field<string>("text"),
-    //            created = note.Field<DateTime>("created")
-    //        }).ToList();
-
-    //    return note_lst.Count > 0 ? note_lst[0] : null;
-    //}
-
-    //public IEnumerable<Note> GetUserNotes(string username)
-    //{
-    //    string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.fam_ID,FamilyNotes.creator FROM FamilyNotes
-	   //                         inner join Note on FamilyNotes.note_id = Note.id
-	   //                         WHERE creator = @username";
-
-    //    SqlCommand cmd = new SqlCommand(cmd_txt, con);
-    //    cmd.Parameters.AddWithValue("@username", username);
-
-    //    SqlDataAdapter adptr = new SqlDataAdapter(cmd);
-    //    DataSet ds = new DataSet();
-    //    adptr.Fill(ds);
-
-
-    //    List<Note> note_lst = ds.Tables[0].AsEnumerable()
-    //        .Select(note => new Note()
-    //        {
-    //            id = note.Field<int>("id"),
-    //            title = note.Field<string>("title"),
-    //            text = note.Field<string>("text"),
-    //            created = note.Field<DateTime>("created"),
-    //            username = note.Field<string>("creator"),
-    //            fam_ID = note.Field<string>("fam_ID")
-    //        }).ToList();
-
-    //    return note_lst;
-    //}
-
-    //public IEnumerable<Note> GetFamilyNotes(string fam_id)
-    //{
-    //    string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID FROM FamilyNotes
-	   //                         inner join Note on FamilyNotes.note_id = Note.id
-	   //                         WHERE fam_ID = @fam_ID";
-
-    //    SqlCommand cmd = new SqlCommand(cmd_txt, con);
-    //    cmd.Parameters.AddWithValue("@fam_id", fam_id);
-
-    //    SqlDataAdapter adptr = new SqlDataAdapter(cmd);
-    //    DataSet ds = new DataSet();
-    //    adptr.Fill(ds);
-
-
-    //    List<Note> note_lst = ds.Tables[0].AsEnumerable()
-    //        .Select(note => new Note()
-    //        {
-    //            id = note.Field<int>("id"),
-    //            title = note.Field<string>("title"),
-    //            text = note.Field<string>("text"),
-    //            created = note.Field<DateTime>("created"),
-    //            username = note.Field<string>("creator"),
-    //            fam_ID = note.Field<string>("fam_ID")
-    //        }).ToList();
-
-    //    return note_lst;
-    //}
-
-    //public IEnumerable<Note> GetFamilyMemberNotes(string fam_id, string username)
-    //{
-    //    string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID FROM FamilyNotes
-	   //                         inner join Note on FamilyNotes.note_id = Note.id
-	   //                         WHERE fam_ID = @fam_ID AND creator = @username";
-
-    //    SqlCommand cmd = new SqlCommand(cmd_txt, con);
-    //    cmd.Parameters.AddWithValue("@fam_id", fam_id);
-    //    cmd.Parameters.AddWithValue("@username", username);
-
-    //    SqlDataAdapter adptr = new SqlDataAdapter(cmd);
-    //    DataSet ds = new DataSet();
-    //    adptr.Fill(ds);
-
-
-    //    List<Note> note_lst = ds.Tables[0].AsEnumerable()
-    //        .Select(note => new Note()
-    //        {
-    //            id = note.Field<int>("id"),
-    //            title = note.Field<string>("title"),
-    //            text = note.Field<string>("text"),
-    //            created = note.Field<DateTime>("created"),
-    //            username = note.Field<string>("creator"),
-    //            fam_ID = note.Field<string>("fam_ID")
-
-    //        }).ToList();
-
-    //    return note_lst;
-    //}
-
+   
 }

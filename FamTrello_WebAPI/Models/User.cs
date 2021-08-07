@@ -15,7 +15,9 @@ namespace FamTrello_WebAPI.Models
         public short age { get; set; }
         public string fam_ID { get; set; }
         public string role { get; set; }
-        public Int16 isAdmin { get; set; }
+        public bool isAdmin { get; set; }
+        public bool isApproved { get; set; }
+        public string push_token { get; set; }
 
     }
 }

@@ -34,6 +34,72 @@ namespace FamTrello_WebAPI.Controllers
             }
 
         }
+        [HttpGet]
+        [Route("api/Family/GetAdminsTokens/{fam_ID}")]
+
+        public IHttpActionResult GetAdminsTokens([FromUri]string fam_ID)
+        {
+
+            try
+            {
+                List<string> tokens = manager.GetAdminsTokens(fam_ID);
+                if (tokens.Count > 0)
+                {
+                    return Ok(tokens);
+                }
+                else
+                    return Content(HttpStatusCode.NoContent, "no tokens was found");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+
+        }
+        [HttpGet]
+        [Route("api/Family/GetUnApproved/{fam_ID}")]
+
+        public IHttpActionResult GetUnApprovedMembers([FromUri]string fam_ID)
+        {
+
+            try
+            {
+                List<string> ids = manager.GetUnapproved(fam_ID);
+                if (ids.Count > 0)
+                {
+                    return Ok(ids);
+                }
+                else
+                    return Content(HttpStatusCode.NoContent, "no memebers to approve");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+
+        }
+
+        [HttpGet]
+        [Route("api/Family/member/{fam_ID}/{username}")]
+        public IHttpActionResult GetMember([FromUri]string fam_ID, [FromUri]string username)
+        {
+
+            try
+            {
+                List<User> mem_lst = manager.GetMember(fam_ID,username).ToList();
+                if (mem_lst.Count > 0)
+                {
+                    return Ok(mem_lst);
+                }
+                else
+                    return Content(HttpStatusCode.NotFound, "no family memebers was found");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+
+        }
 
         [HttpGet]
         [Route("api/Family/members/{fam_ID}")]
@@ -55,6 +121,24 @@ namespace FamTrello_WebAPI.Controllers
                 return Content(HttpStatusCode.BadRequest, ex);
             }
 
+        }
+
+        [HttpGet]
+        [Route("api/Family/push_token/{username}")]
+        public IHttpActionResult GetToken(string username)
+        {
+            try
+            {
+                string token = manager.GetToken(username);
+                if (token != "")
+                    return Ok(token);
+                else
+                    return BadRequest("Token not Exists.");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex.Message);
+            }
         }
 
         [HttpPost]
@@ -88,8 +172,7 @@ namespace FamTrello_WebAPI.Controllers
             {
                 User u = manager.AddFamMember(famMember2add);
                 if (u != null)
-                {
-                    
+                {                    
                     return Created(new Uri(Request.RequestUri.AbsoluteUri + famMember2add.fam_ID), famMember2add);
                 }
                 else
@@ -101,6 +184,41 @@ namespace FamTrello_WebAPI.Controllers
             }
         }
 
+        [HttpPost]
+        [Route("api/Family/approve")]
+        public IHttpActionResult ApproveMember([FromBody] User famMember2approve)
+        {
+            try
+            {
+                
+                if ( manager.ApproveMember(famMember2approve))
+                {
+                    return Ok(famMember2approve.username +" was approved.");
+                }
+                else
+                    return BadRequest("Unable to Approve Member");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex.Message);
+            }
+        }
+        [HttpPost]
+        [Route("api/Family/push_token/{token}")]
+        public IHttpActionResult SetToken([FromBody] User user,string token)
+        {
+            try
+            {
+                if (manager.SetToken(user, token))
+                    return Ok(token);
+                else
+                    return BadRequest();
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex.Message);
+            }
+        }
         [HttpPut]
         [Route("api/Family/setAdmin/{isAdmin}")]
         public IHttpActionResult SetAdmin([FromBody]User u,[FromUri] bool isAdmin)
@@ -108,9 +226,7 @@ namespace FamTrello_WebAPI.Controllers
             
             try
             {
-                bool res = manager.SetAdmin(u, isAdmin);
-
-                if (res)
+                if (manager.SetAdmin(u, isAdmin))
                     return Ok($"{u.username} is now {(isAdmin ? "Admin" : "Not an Admin")}");
                 else
                     return Content(HttpStatusCode.NotFound, "unable to find family member");
@@ -122,19 +238,20 @@ namespace FamTrello_WebAPI.Controllers
         }
 
         [HttpDelete]
-        public IHttpActionResult DeleteFamMember([FromBody]User user2delete)
+        [Route("api/Family/{fam_ID}/{username}")]
+        public IHttpActionResult DeleteFamMember([FromUri]string fam_ID,string username)
         {
 
             try
             {
-                int res = manager.RemoveFamilyMember(user2delete.fam_ID, user2delete);
+                int res = manager.RemoveFamilyMember(fam_ID, username);
                 if (res > 0)
                 {
-                    return Content(HttpStatusCode.OK, user2delete.first_name + " has removed.");
+                    return Content(HttpStatusCode.OK, username + " has removed.");
                 }
                 else
                 {
-                    return BadRequest("Unable to delete " + user2delete.username);
+                    return BadRequest("Unable to delete " + username +" from "+fam_ID);
                 }
 
             }

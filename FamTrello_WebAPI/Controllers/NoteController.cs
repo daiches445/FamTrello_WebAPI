@@ -8,6 +8,13 @@ using FamTrello_WebAPI.Models;
 
 namespace FamTrello_WebAPI.Controllers
 {
+    enum NoteStatus
+    {
+        ACTIVE = 1,
+        PENDING = 2,
+        COMPLETED = 3,
+        DELETED = 4
+    }
     public class NoteController : ApiController
     {
         DBManager manager = new DBManager();
@@ -24,7 +31,7 @@ namespace FamTrello_WebAPI.Controllers
         public IHttpActionResult Get([FromUri]int note_ID)
         {
             string cmd_txt = @"SELECT * FROM Note WHERE id = @note_ID";
-            Note n = manager.ExecQGetNotes(cmd_txt,note_ID,"mock","mock").First();
+            Note n = manager.ExecQGetNotes(cmd_txt, note_ID, "mock", "mock").First();
 
             try
             {
@@ -47,7 +54,7 @@ namespace FamTrello_WebAPI.Controllers
             string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.fam_ID,FamilyNotes.creator FROM FamilyNotes
 	                            inner join Note on FamilyNotes.note_id = Note.id
 	                            WHERE creator = @username";
-            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt,0,"mock",username).ToList();
+            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt, 0, "mock", username).ToList();
 
             try
             {
@@ -70,10 +77,10 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/family/{fam_ID}")]
         public IHttpActionResult GetFamilyNotes([FromUri] string fam_ID)
         {
-            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID FROM FamilyNotes
+            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID,FamilyNotes.note_status FROM FamilyNotes
 	                            inner join Note on FamilyNotes.note_id = Note.id
 	                            WHERE fam_ID = @fam_ID";
-            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt,0,fam_ID,"mock").ToList();
+            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt, 0, fam_ID, "mock").ToList();
 
             try
             {
@@ -99,7 +106,7 @@ namespace FamTrello_WebAPI.Controllers
 	                            inner join Note on FamilyNotes.note_id = Note.id
 	                            WHERE fam_ID = @fam_ID AND creator = @username";
 
-            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt,0,fam_ID, username).ToList();
+            List<Note> note_lst = manager.ExecQGetNotes(cmd_txt, 0, fam_ID, username).ToList();
 
             try
             {
@@ -118,18 +125,52 @@ namespace FamTrello_WebAPI.Controllers
             }
 
         }
+        [HttpGet]
+        [Route("api/Note/tagged/{note_ID}")]
+        public IHttpActionResult GetTaggedUsers(int note_ID)
+        {
+            try
+            {
+                List<string> tagged_users = manager.GetTaggedUsers(note_ID).ToList();
+                return Content(HttpStatusCode.OK, tagged_users);
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
+        [HttpGet]
+        [Route("api/Note/status/{note_ID}")]
+        public IHttpActionResult GetNoteStatus([FromUri]int note_ID)
+        {
+            try
+            {
+                string status = manager.GetNoteStatus(note_ID);
+
+                if (status != "")
+                    return Ok(status);
+                else
+                    return Content(HttpStatusCode.NotFound, "smoething went wrong.");
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
 
         [HttpPost]
         //[Route("api/Note/{fam_ID}&{username}")]
         public IHttpActionResult Post([FromBody] Note note2post)
         {
-            int note_ID = manager.PostNote(note2post);
-           
             try
             {
+                int note_ID = manager.PostNote(note2post);
                 if (note_ID != 0)
                 {
-                    int res = manager.LinkNote(note2post.fam_ID,note2post.username, note_ID);
+                    note2post.note_id = note_ID;
+                    int res = manager.LinkNote(note2post);
+
                     if (res != 0)
                         return Ok(note_ID);
                     else
@@ -145,7 +186,7 @@ namespace FamTrello_WebAPI.Controllers
         }
 
         [HttpPost]
-        [Route("api/Note/tagUsers")]
+        [Route("api/Note/tagged")]
         public IHttpActionResult TagUsers([FromBody] TaggedUsers[] taggedUsers)
         {
             try
@@ -167,12 +208,37 @@ namespace FamTrello_WebAPI.Controllers
         }
 
         [HttpPut]
+        [Route("api/Note/status/{note_id}/{status}")]
+
+        public IHttpActionResult UpdateStatus([FromUri] int note_ID,[FromUri] string status)
+        {
+            try
+            {
+                int status_code = (int)Enum.Parse(typeof(NoteStatus), status);
+                
+                if (manager.SetNoteStatus(note_ID, status_code))
+                {
+                    return Ok(note_ID +" IS NOW "+ status);
+                }
+                else
+                {
+                    return BadRequest("Unable to update");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.BadRequest, ex);
+            }
+        }
+
+        [HttpPut]
         public IHttpActionResult Put([FromBody] Note note2update)
         {
-            Note n = manager.UpdateNote(note2update);
 
             try
             {
+                Note n = manager.UpdateNote(note2update);
+
                 if (n != null)
                 {
                     return Ok(n);
@@ -192,13 +258,13 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/{note_ID}")]
         public IHttpActionResult Delete([FromUri] int note_ID)
         {
-            int res = manager.DeleteNote(note_ID);
 
             try
             {
+                int res = manager.DeleteNote(note_ID);
                 if (res > 0)
                 {
-                    return Ok("Note No."+note_ID+" Deleted. Rows affected-"+ res);
+                    return Ok("Note No." + note_ID + " Deleted. Rows affected-" + res);
                 }
                 else
                 {

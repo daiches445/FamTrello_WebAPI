@@ -51,8 +51,8 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/user/{username}")]
         public IHttpActionResult GetUserNotes([FromUri] string username)
         {
-            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.fam_ID,FamilyNotes.creator FROM FamilyNotes
-	                            inner join Note on FamilyNotes.note_id = Note.id
+            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.fam_ID,FamilyNotes.creator,Note_status.note_status FROM FamilyNotes
+	                            inner join Note on FamilyNotes.note_id = Note.id inner join Note_status on FamilyNotes.note_status = Note_status.code
 	                            WHERE creator = @username";
             List<Note> note_lst = manager.ExecQGetNotes(cmd_txt, 0, "mock", username).ToList();
 
@@ -77,8 +77,8 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/family/{fam_ID}")]
         public IHttpActionResult GetFamilyNotes([FromUri] string fam_ID)
         {
-            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID,FamilyNotes.note_status FROM FamilyNotes
-	                            inner join Note on FamilyNotes.note_id = Note.id
+            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID,Note_status.note_status FROM FamilyNotes
+	                            inner join Note on FamilyNotes.note_id = Note.id inner join Note_status on FamilyNotes.note_status = Note_status.code
 	                            WHERE fam_ID = @fam_ID";
             List<Note> note_lst = manager.ExecQGetNotes(cmd_txt, 0, fam_ID, "mock").ToList();
 
@@ -102,8 +102,8 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/Note/fam_member/{fam_ID}/{username}")]
         public IHttpActionResult GetFamMemberNotes([FromUri] string fam_ID, [FromUri]string username)
         {
-            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID FROM FamilyNotes
-	                            inner join Note on FamilyNotes.note_id = Note.id
+            string cmd_txt = @"SELECT Note.id,Note.title,Note.text,Note.created,FamilyNotes.creator,FamilyNotes.fam_ID,Note_status.note_status FROM FamilyNotes
+	                            inner join Note on FamilyNotes.note_id = Note.id inner join Note_status on FamilyNotes.note_status = Note_status.code
 	                            WHERE fam_ID = @fam_ID AND creator = @username";
 
             List<Note> note_lst = manager.ExecQGetNotes(cmd_txt, 0, fam_ID, username).ToList();
@@ -168,7 +168,7 @@ namespace FamTrello_WebAPI.Controllers
                 int note_ID = manager.PostNote(note2post);
                 if (note_ID != 0)
                 {
-                    note2post.note_id = note_ID;
+                    note2post.id = note_ID;
                     int res = manager.LinkNote(note2post);
 
                     if (res != 0)

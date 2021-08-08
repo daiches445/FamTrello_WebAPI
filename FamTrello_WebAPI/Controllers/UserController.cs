@@ -68,16 +68,15 @@ namespace FamTrello_WebAPI.Controllers
         [Route("api/User/families/{username}")]
         public IHttpActionResult GetFamilies(string username)
         {
-
             try
             {
-                List<Family> fam_lst = manager.GetFamilies(username).ToList();
+                List<string> fam_lst = manager.GetFamilies(username);
                 if (fam_lst.Count > 0)
                 {
                     return Ok(fam_lst);
                 }
                 else
-                    return Content(HttpStatusCode.NotFound, "Not Found.");
+                    return Content(HttpStatusCode.NoContent, "Not Found.");
             }
             catch (Exception ex)
             {

@@ -48,7 +48,7 @@ namespace FamTrello_WebAPI.Controllers
                     return Ok(tokens);
                 }
                 else
-                    return Content(HttpStatusCode.NoContent, "no tokens was found");
+                    return BadRequest("No tokens");
             }
             catch (Exception ex)
             {
@@ -70,7 +70,7 @@ namespace FamTrello_WebAPI.Controllers
                     return Ok(ids);
                 }
                 else
-                    return Content(HttpStatusCode.NoContent, "no memebers to approve");
+                    return BadRequest("no members");
             }
             catch (Exception ex)
             {
@@ -173,7 +173,7 @@ namespace FamTrello_WebAPI.Controllers
                 User u = manager.AddFamMember(famMember2add);
                 if (u != null)
                 {                    
-                    return Created(new Uri(Request.RequestUri.AbsoluteUri + famMember2add.fam_ID), famMember2add);
+                    return Ok(famMember2add);
                 }
                 else
                     return BadRequest("Member exists");
